@@ -33,7 +33,6 @@ import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.channel.socket.oio.OioServerSocketChannelFactory;
-import org.jboss.netty.example.securechat.SecureChatSslContextFactory;
 import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
@@ -45,11 +44,20 @@ import org.jboss.netty.handler.codec.http.HttpResponseStatus;
 import org.jboss.netty.handler.ssl.SslHandler;
 import org.jboss.netty.util.CharsetUtil;
 
-import javax.net.ssl.SSLEngine;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.TrustManagerFactory;
 
 /**
  * A simple HttpServer with configurable error introduction.
@@ -153,9 +161,7 @@ public class DummyHttpServer {
                 ChannelPipeline pipeline = Channels.pipeline();
 
                 if (useSsl) {
-                    SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
-                    engine.setUseClientMode(false);
-                    pipeline.addLast("ssl", new SslHandler(engine));
+                    pipeline.addLast("ssl", createSelfSignedSslHandler());
                 }
 
                 pipeline.addLast("encoder", new HttpResponseEncoder());
@@ -339,5 +345,43 @@ public class DummyHttpServer {
                 server.terminate();
             }
         });
+    }
+
+    public static SslHandler createSelfSignedSslHandler() throws Exception
+    {
+        String algorithm = "SunX509";
+        String password = "password";
+
+        KeyStore keyStore = KeyStore.getInstance("JKS");
+        InputStream keyStoreAsStream = null;
+
+        try
+        {
+            keyStoreAsStream = new BufferedInputStream(
+                new FileInputStream("src/main/resources/dummyserver/selfsigned.jks"));
+
+            keyStore.load(keyStoreAsStream, password.toCharArray());
+        }
+        finally
+        {
+            if (keyStoreAsStream != null)
+            {
+                try { keyStoreAsStream.close(); } catch (Exception e) {}
+            }
+        }
+
+        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(algorithm);
+        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(algorithm);
+
+        keyManagerFactory.init(keyStore, password.toCharArray());
+        trustManagerFactory.init(keyStore);
+
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), new SecureRandom());
+
+        SSLEngine engine = context.createSSLEngine();
+        engine.setUseClientMode(false);
+
+        return new SslHandler(engine, true);
     }
 }
