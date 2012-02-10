@@ -50,7 +50,6 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.oio.OioClientSocketChannelFactory;
-import org.jboss.netty.example.securechat.SecureChatSslContextFactory;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpClientCodec;
 import org.jboss.netty.handler.codec.http.HttpContentCompressor;
@@ -60,6 +59,7 @@ import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.ssl.SslHandler;
 import org.jboss.netty.util.internal.ExecutorUtil;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -175,6 +175,7 @@ public abstract class AbstractHttpClient implements HttpClient, HttpConnectionLi
     protected HttpRequestFutureFactory futureFactory;
     protected TimeoutManager timeoutManager;
     protected boolean cleanupInactiveHostContexts;
+    protected SSLContext sslContext;
 
     // internal vars --------------------------------------------------------------------------------------------------
 
@@ -257,8 +258,15 @@ public abstract class AbstractHttpClient implements HttpClient, HttpConnectionLi
             @Override
             public ChannelPipeline getPipeline() throws Exception {
                 ChannelPipeline pipeline = Channels.pipeline();
+
                 if (useSsl) {
-                    SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
+                    if (sslContext == null)
+                    {
+                        throw new IllegalStateException(
+                            "Cannot estables an SSL connection because no SSLContext was provided.");
+                    }
+
+                    SSLEngine engine = sslContext.createSSLEngine();
                     engine.setUseClientMode(true);
                     pipeline.addLast("ssl", new SslHandler(engine));
                 }
@@ -665,6 +673,11 @@ public abstract class AbstractHttpClient implements HttpClient, HttpConnectionLi
             throw new IllegalStateException("Cannot modify property after initialization");
         }
         this.useSsl = useSsl;
+    }
+
+    public void setSslContext(SSLContext sslContext)
+    {
+        this.sslContext = sslContext;
     }
 
     public int getRequestCompressionLevel() {
