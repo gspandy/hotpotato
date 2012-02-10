@@ -33,7 +33,6 @@ import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.channel.socket.oio.OioServerSocketChannelFactory;
-import org.jboss.netty.example.securechat.SecureChatSslContextFactory;
 import org.jboss.netty.handler.codec.http.DefaultHttpResponse;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
@@ -42,10 +41,8 @@ import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
 import org.jboss.netty.handler.codec.http.HttpResponse;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
-import org.jboss.netty.handler.ssl.SslHandler;
 import org.jboss.netty.util.CharsetUtil;
 
-import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.concurrent.Executors;
@@ -153,9 +150,8 @@ public class DummyHttpServer {
                 ChannelPipeline pipeline = Channels.pipeline();
 
                 if (useSsl) {
-                    SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
-                    engine.setUseClientMode(false);
-                    pipeline.addLast("ssl", new SslHandler(engine));
+                    // Nothing for now
+                    // TODO generate a self-signed cert, create server ssl context...
                 }
 
                 pipeline.addLast("encoder", new HttpResponseEncoder());
